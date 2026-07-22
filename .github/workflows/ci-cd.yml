@@ -30,7 +30,7 @@ jobs:
         run: python train_model.py
 
       - name: Run tests
-        run: pytest -v
+        run: python -m pytest -v
 
   build-and-deploy:
     name: Build image, push to ECR, deploy to EC2
