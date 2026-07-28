@@ -15,7 +15,9 @@ Latency-optimization choices made here (see README for details):
 
 import time
 from contextlib import asynccontextmanager
+import os
 
+import boto3
 import joblib
 import numpy as np
 from fastapi import FastAPI, Request
@@ -24,6 +26,10 @@ from fastapi.responses import JSONResponse
 from app.schemas import IrisFeatures, PredictionResponse, HealthResponse
 
 MODEL_PATH = "model/iris_model.joblib"
+S3_BUCKET = os.environ.get("MODEL_S3_BUCKET", "sarang-iris-model-artifacts-865122443628")
+S3_KEY = os.environ.get("MODEL_S3_KEY", "models/latest/iris_model.joblib")
+LOCAL_MODEL_PATH = "/tmp/iris_model.joblib"
+USE_S3 = os.environ.get("USE_S3_MODEL", "false").lower() == "true"
 
 ml_state: dict = {"model": None, "target_names": None}
 
@@ -31,10 +37,17 @@ ml_state: dict = {"model": None, "target_names": None}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: load model once, keep it in memory for the life of the process
-    bundle = joblib.load(MODEL_PATH)
+    if USE_S3:
+        s3 = boto3.client("s3")
+        s3.download_file(S3_BUCKET, S3_KEY, LOCAL_MODEL_PATH)
+        bundle = joblib.load(LOCAL_MODEL_PATH)
+        print(f"Model loaded from s3://{S3_BUCKET}/{S3_KEY}", flush=True)
+    else:
+        bundle = joblib.load(MODEL_PATH)
+        print(f"Model loaded from local path {MODEL_PATH}", flush=True)
+
     ml_state["model"] = bundle["model"]
     ml_state["target_names"] = bundle["target_names"]
-    print("Model loaded successfully.")
     yield
     # Shutdown: nothing to clean up for this simple model
     ml_state.clear()
