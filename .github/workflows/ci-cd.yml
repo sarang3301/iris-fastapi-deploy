@@ -85,6 +85,9 @@ jobs:
             docker run -d \
               --name $CONTAINER_NAME \
               --restart unless-stopped \
+              -e USE_S3_MODEL=true \
+              -e MODEL_S3_BUCKET=sarang-iris-model-artifacts-865122443628 \
+              -e MODEL_S3_KEY=models/latest/iris_model.joblib \
               -p 8000:8000 \
               $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
